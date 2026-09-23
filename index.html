@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Milling Train Operation - PT Rejoso Manis Indo</title>
+  <meta name="description" content="Kalkulator Operasional SCADA Milling Train Pabrik Gula PT Rejoso Manis Indo." />
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class', 
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Inter"', 'sans-serif'],
+            mono: ['"Inter"', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Base Global Styles */
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Form Inputs Overrides */
+    input[type="number"], input[type="time"], input[type="text"], input[type="password"] {
+      font-family: 'Inter', sans-serif;
+      transition: all 0.15s ease-in-out;
+    }
+    
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    .dark ::-webkit-scrollbar-track { background: #0F172A; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-track { background: #F1F5F9; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+
+    /* Pulse Animations */
+    @keyframes ledPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.92); }
+    }
+    .led-pulse-green { animation: ledPulse 1.6s infinite ease-in-out; }
+  </style>
+
+  <!-- Native Anti-Flicker Theme Engine -->
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('scada_theme') || 'light';
+      if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    })();
+  </script>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-50 transition-colors duration-200">
+
+  <!-- ================================================================= -->
+  <!-- 1. HEADER SCADA -->
+  <!-- ================================================================= -->
+  <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-3 shadow-sm sticky top-0 z-40 transition-colors">
+    <div class="max-w-[1600px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
+      
+      <!-- Logo & Title -->
+      <div class="flex items-center gap-3">
+        <!-- Logo RMI -->
+        <div class="w-10 h-10 bg-white border border-slate-200 dark:border-slate-600 rounded flex items-center justify-center p-1 flex-shrink-0">
+          <img src="/RMI-Samping.png" alt="Logo PT Rejoso Manis Indo" class="w-full h-full object-contain" />
+        </div>
+
+        <!-- Logo Mitr Phol -->
+        <div class="w-10 h-10 bg-white border border-slate-200 dark:border-slate-600 rounded flex items-center justify-center p-1 flex-shrink-0">
+          <img src="/mitr-phol-logo.ico" alt="Mitr Phol Logo" class="w-full h-full object-contain" />
+        </div>
+
+        <div>
+          <h1 class="text-sm font-bold tracking-wider uppercase text-slate-900 dark:text-slate-100">PT REJOSO MANIS INDO - MITR PHOL GROUP</h1>
+          <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Milling Train Operation &amp; Capacity Control</div>
+        </div>
+      </div>
+
+      <!-- Control Badges -->
+      <div class="flex items-center gap-3 text-xs font-mono">
+        <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded transition-colors">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 led-pulse-green"></span>
+          <span id="shift-badge-text" class="text-emerald-600 dark:text-emerald-400 font-bold">SHIFT 1</span>
+        </div>
+        <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-300 transition-colors">
+          <span id="scada-date" class="hidden sm:inline-block">---</span>
+          <span class="text-slate-400 dark:text-slate-600 hidden sm:inline-block">|</span>
+          <span id="scada-clock" class="font-bold text-slate-900 dark:text-slate-100">--:--:-- WIB</span>
+        </div>
+        
+        <button type="button" onclick="toggleThemeMode()" class="p-2 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded text-slate-500 dark:text-slate-400 transition-all">
+          <svg id="icon-theme-sun" class="w-4 h-4 text-amber-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+          <svg id="icon-theme-moon" class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+        </button>
+
+        <button type="button" onclick="toggleFullscreen()" class="p-2 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded text-slate-500 dark:text-slate-400 transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0 0l-5-5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================================================================= -->
+  <!-- 2. MAIN SCADA OPERATIONAL DISPLAY -->
+  <!-- ================================================================= -->
+  <main class="max-w-[1600px] w-full mx-auto p-4 flex-1 space-y-4">
+
+    <!-- REALISASI & TARGET (RMI PORTAL) -->
+    <section class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 shadow-sm transition-colors">
+      
+      <!-- HEADER METRIK & BANNER -->
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-700">
+        
+        <!-- Kiri: Judul -->
+        <div class="flex items-center gap-3 flex-wrap lg:whitespace-nowrap flex-shrink-0">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 led-pulse-green"></span>
+          <h2 class="text-sm font-bold uppercase text-slate-900 dark:text-slate-100">Realisasi &amp; Target Harian</h2>
+        </div>
+
+        <!-- Tengah: TRUCK SUMMARY BANNER (REVISED UI) -->
+        <div id="truck-summary-banner" class="flex-1 w-full max-w-3xl hidden mx-auto lg:px-4 flex items-center justify-center">
+          <div class="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400 px-4 py-1.5 rounded-md shadow-sm text-center text-[11.5px] uppercase font-bold tracking-wider transition-all">
+            <span id="truck-summary-text">TRUCK SUMMARY (-- HOUR(S) TO CRUSH SUGARCANE IN CANE YARD TILL --)</span>
+          </div>
+        </div>
+
+        <!-- Kanan: Kontrol Server -->
+        <div class="flex items-center gap-3 text-xs font-mono text-slate-500 dark:text-slate-400 lg:justify-end flex-shrink-0">
+          <span id="strip-auto-sync-label" class="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-2 py-1 rounded border border-emerald-200 dark:border-emerald-800">Auto</span>
+          <span>Server: <strong id="strip-rmi-time" class="text-slate-700 dark:text-slate-200">--:--:--</strong></span>
+          <button type="button" onclick="handleSyncClick(this)" class="px-3 py-1 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded transition-colors flex items-center gap-2">
+            Synchronization
+          </button>
+        </div>
+      </div>
+      
+      <div class="mt-4 font-mono">
+        <div class="flex justify-between text-xs mb-2">
+          <span class="text-slate-500 dark:text-slate-400">Progres Target:</span>
+          <span id="m3-progress-pct" class="text-blue-600 dark:text-blue-400 font-bold">0%</span>
+        </div>
+        <div class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 h-2.5 rounded-full overflow-hidden">
+          <div id="m3-progress-bar" class="bg-blue-500 h-full rounded-full transition-all" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- KEMBALI KE lg:grid-cols-6 SETELAH PURITY DROP DIHAPUS -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4 font-mono text-center">
+        <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700">
+          <span class="text-[10px] uppercase text-slate-500 dark:text-slate-400 block mb-1">Target Harian</span>
+          <strong id="m3-rmi-target" class="text-2xl text-slate-900 dark:text-slate-100 block">---</strong>
+          <span class="text-xs text-slate-500">Ton / Hari</span>
+        </div>
+        <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700">
+          <span class="text-[10px] uppercase text-slate-500 dark:text-slate-400 block mb-1">Realisasi Giling</span>
+          <strong id="m3-rmi-crushed" class="text-2xl text-emerald-600 dark:text-emerald-500 block">---</strong>
+          <span class="text-xs text-slate-500"><span id="m3-rmi-crushed-truck">--</span> Truk</span>
+        </div>
+        <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700">
+          <span class="text-[10px] uppercase text-slate-500 dark:text-slate-400 block mb-1">Sisa Target</span>
+          <strong id="m3-rmi-remaining" class="text-2xl text-amber-600 dark:text-amber-500 block">---</strong>
+          <span class="text-xs text-slate-500"><span id="m3-rmi-remaining-truck">--</span> Truk</span>
+        </div>
+        <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700">
+          <span class="text-[10px] uppercase text-slate-500 dark:text-slate-400 block mb-1">Sisa Waktu</span>
+          <strong id="m3-rmi-rem-hour" class="text-2xl text-slate-900 dark:text-slate-100 block">--:--</strong>
+          <span class="text-xs text-slate-500" id="m3-rmi-rem-hour-dec">-- Jam</span>
+        </div>
+        <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 col-span-2 sm:col-span-1">
+          <span class="text-[10px] uppercase text-slate-500 dark:text-slate-400 block mb-1">Target per Jam</span>
+          <strong id="m3-rmi-hourly-target" class="text-2xl text-blue-600 dark:text-blue-400 block">---</strong>
+          <span class="text-xs text-slate-500"><span id="m3-rmi-hourly-truck">--</span> Truk/Jam</span>
+        </div>
+        <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 col-span-2 sm:col-span-1 shadow-sm">
+          <span class="text-[10px] uppercase text-slate-500 dark:text-slate-400 block mb-1">Stok Cane Yard</span>
+          <strong id="m3-grid-cy-truck" class="text-2xl text-cyan-600 dark:text-cyan-400 block">---</strong>
+          <span class="text-xs text-slate-500"><span id="m3-grid-cy-ton">---</span> Ton</span>
+        </div>
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 font-mono text-xs">
+        <div class="flex justify-between text-slate-500 dark:text-slate-400 mb-2">
+          <span>Rincian Giling per Shift</span>
+          <span>Total: <strong id="m3-total-crushed-truck" class="text-slate-800 dark:text-slate-200">--</strong> Truk</span>
+        </div>
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div id="m3-box-shift1" class="bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700 transition-colors duration-300">
+            <span id="m3-title-shift1" class="text-[10px] text-slate-500 dark:text-slate-400 block mb-1">SHIFT 1</span>
+            <strong id="m3-shift1-ton" class="text-sm text-slate-800 dark:text-slate-200 block">-- Ton</strong>
+          </div>
+          <div id="m3-box-shift2" class="bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700 transition-colors duration-300">
+            <span id="m3-title-shift2" class="text-[10px] text-slate-500 dark:text-slate-400 block mb-1">SHIFT 2</span>
+            <strong id="m3-shift2-ton" class="text-sm text-slate-800 dark:text-slate-200 block">-- Ton</strong>
+          </div>
+          <div id="m3-box-shift3" class="bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700 transition-colors duration-300">
+            <span id="m3-title-shift3" class="text-[10px] text-slate-500 dark:text-slate-400 block mb-1">SHIFT 3</span>
+            <strong id="m3-shift3-ton" class="text-sm text-slate-800 dark:text-slate-200 block">-- Ton</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEGMENTED MODE SWITCHER -->
+    <section class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm transition-colors">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400"></span>
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Mode Kontrol Operasional</span>
+      </div>
+      <div class="inline-flex p-1 bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-lg w-full sm:w-auto">
+        <button id="tab-mode-1" type="button" onclick="switchMode(1)" class="flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-md transition-all duration-150 bg-blue-600 text-white shadow-sm">JAM SELESAI</button>
+        <button id="tab-mode-2" type="button" onclick="switchMode(2)" class="flex-1 sm:flex-initial px-4 py-1.5 text-xs font-semibold rounded-md transition-all duration-150 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100">REKOMENDASI SPEED</button>
+        <button id="tab-mode-3" type="button" onclick="switchMode(3)" class="flex-1 sm:flex-initial px-4 py-1.5 text-xs font-semibold rounded-md transition-all duration-150 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100">TARGET GILING</button>
+      </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+      <!-- LEFT COLUMN: INPUT -->
+      <section class="lg:col-span-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden transition-colors">
+        <div class="bg-slate-50 dark:bg-slate-800 px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+          <h2 class="text-sm font-bold uppercase text-slate-900 dark:text-slate-100">Parameter Input</h2>
+          <button type="button" onclick="clearAllInputs()" class="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-1 rounded">Reset Form</button>
+        </div>
+        
+        <div class="p-4 space-y-4">
+          <div id="group-target-tcd" class="hidden space-y-2">
+            <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">TARGET GILING (TCD)</label>
+            <input type="text" inputmode="decimal" id="input-target-tcd" class="w-full px-3 py-2 text-lg font-bold rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-50 focus:border-blue-500" placeholder="0" />
+            <div class="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-xs font-mono text-slate-500 dark:text-slate-400 space-y-2">
+              <div class="flex justify-between">
+                <span>Realisasi Saat Ini:</span>
+                <span class="text-emerald-600 dark:text-emerald-400 font-bold" id="target-giling-crushed-ton">---</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Sisa Waktu:</span>
+                <span class="text-slate-900 dark:text-slate-200 font-bold" id="target-giling-rem-hour">--:--</span>
+              </div>
+              <div class="flex justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
+                <span>Sisa Target:</span>
+                <span class="text-amber-600 dark:text-amber-500 font-bold"><span id="target-giling-sisa-ton">---</span> Ton</span>
+              </div>
+            </div>
+          </div>
+
+          <div id="group-speed-input" class="space-y-2">
+            <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">PUTARAN MILL (RPM)</label>
+            <input type="text" inputmode="decimal" id="input-speed" class="w-full px-3 py-2 text-lg font-bold rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-50 focus:border-blue-500" placeholder="0" />
+          </div>
+
+          <div id="group-stok-input" class="space-y-2">
+            <div class="flex justify-between">
+              <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">STOK TEBU (TRUK)</label>
+              <button type="button" onclick="openRmiSyncModal()" class="text-[10px] bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">Pengaturan RMI</button>
+            </div>
+            <input type="text" inputmode="decimal" id="input-stok" class="w-full px-3 py-2 text-lg font-bold rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-50 focus:border-blue-500" placeholder="0" />
+            <div class="flex justify-between text-xs font-mono text-slate-500 dark:text-slate-400 pt-1">
+              <span id="rmi-sync-status-indicator">Sumber: Manual</span>
+              <span>Tonase: <strong id="stok-ton-preview" class="text-slate-800 dark:text-slate-200">--- Ton</strong></span>
+            </div>
+          </div>
+
+          <div id="group-jam-sekarang" class="space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">WAKTU MULAI</label>
+              <button type="button" onclick="toggleLiveClockSync()" class="text-[10px] bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400 flex items-center gap-1.5 transition-colors">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" id="live-clock-led"></span>
+                <span id="live-clock-status">REAL-TIME AKTIF</span>
+              </button>
+            </div>
+            <input type="time" step="1" id="input-jam-sekarang" class="w-full px-3 py-2 text-lg font-bold rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-50 focus:border-blue-500" />
+          </div>
+
+          <div id="group-target-jam" class="hidden space-y-2">
+            <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">TARGET WAKTU SELESAI</label>
+            <input type="time" id="input-target-jam" class="w-full px-3 py-2 text-lg font-bold rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-50 focus:border-blue-500" />
+            <div class="text-right text-xs font-mono text-slate-500 dark:text-slate-400 pt-1">
+              Durasi: <strong id="target-durasi-preview" class="text-slate-800 dark:text-slate-200">---</strong>
+            </div>
+          </div>
+          
+          <input type="hidden" id="input-speed-divisor" value="10.0" />
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: TELEMETRY -->
+      <section class="lg:col-span-8 space-y-4">
+        
+        <!-- MODE 1 -->
+        <div id="mode-1-metrics" class="space-y-4">
+          <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-5 shadow-sm transition-colors">
+            <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Waktu Selesai (Tebu Habis)</h3>
+            <div class="flex items-baseline gap-4">
+              <span id="m1-estimasi-habis" class="text-5xl font-bold text-slate-900 dark:text-slate-100">--:--</span>
+              <span id="m1-badge-hari" class="hidden text-sm font-mono bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded text-slate-600 dark:text-slate-300"></span>
+            </div>
+            <div class="text-sm font-mono text-slate-500 dark:text-slate-400 mt-2">
+              Durasi: <strong id="m1-durasi-jam" class="text-slate-800 dark:text-slate-200">-- Jam</strong> 
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-5 shadow-sm transition-colors">
+              <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Kapasitas (Ton/Jam)</h3>
+              <div class="flex items-baseline gap-2">
+                <span id="m1-kapasitas-ton" class="text-4xl font-bold text-slate-900 dark:text-slate-100">0.0</span>
+                <span class="text-sm text-slate-500">Ton/h</span>
+              </div>
+            </div>
+            <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-5 shadow-sm transition-colors">
+              <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Laju Imbibisi</h3>
+              <div class="flex items-baseline gap-2">
+                <span id="m1-saran-imbibisi" class="text-4xl font-bold text-slate-900 dark:text-slate-100">0.0</span>
+                <span class="text-sm text-slate-500">m&sup3;/h</span>
+              </div>
+              <div class="text-xs font-mono text-slate-400 mt-2" id="m1-imbibisi-lpm">0.0 L/min</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODE 2 -->
+        <div id="mode-2-metrics" class="space-y-4 hidden">
+          <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-5 shadow-sm transition-colors">
+            <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Rekomendasi Putaran (RPM)</h3>
+            <div class="flex items-baseline gap-4">
+              <span id="m2-rekomendasi-speed" class="text-6xl font-bold text-slate-900 dark:text-slate-100">--</span>
+              <span class="text-2xl text-slate-500 font-bold">RPM</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-5 shadow-sm transition-colors">
+              <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Kapasitas Giling</h3>
+              <div class="flex items-baseline gap-2">
+                <span id="m2-target-kapasitas-ton" class="text-4xl font-bold text-slate-900 dark:text-slate-100">0.0</span>
+                <span class="text-sm text-slate-500">Ton/h</span>
+              </div>
+            </div>
+            <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-5 shadow-sm transition-colors">
+              <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Laju Imbibisi</h3>
+              <div class="flex items-baseline gap-2">
+                <span id="m2-saran-imbibisi" class="text-4xl font-bold text-slate-900 dark:text-slate-100">0.0</span>
+                <span class="text-sm text-slate-500">m&sup3;/h</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODE 3 -->
+        <div id="mode-3-metrics" class="space-y-4 hidden">
+          <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-5 shadow-sm transition-colors">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Rekomendasi Operasional</h3>
+              <span class="text-xs font-mono text-slate-500 dark:text-slate-400">Target: <strong id="m3-badge-target-tcd" class="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-bold">Menunggu Input</strong></span>
+            </div>
+
+            <div id="m3-prompt-no-target" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-4 rounded text-slate-500 dark:text-slate-400 font-mono text-xs text-center mt-4">
+              Masukkan Target Giling pada panel parameter untuk melihat kalkulasi operasional.
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+              <div class="bg-slate-50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-700 rounded transition-colors">
+                <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase mb-2">Rekomendasi Putaran:</div>
+                <div class="flex items-baseline gap-2">
+                  <span id="m3-rekomendasi-speed" class="text-5xl font-bold text-slate-900 dark:text-slate-100">--</span>
+                  <span class="text-xl text-slate-500 dark:text-slate-400">RPM</span>
+                </div>
+                <div class="grid grid-cols-2 gap-4 border-t border-slate-200 dark:border-slate-700 mt-4 pt-3 font-mono">
+                  <div>
+                    <span class="text-[10px] text-slate-500 dark:text-slate-400 block">Sisa Target:</span>
+                    <strong id="m3-sisa-target-ton" class="text-slate-800 dark:text-slate-200">-- Ton</strong>
+                  </div>
+                  <div>
+                    <span class="text-[10px] text-slate-500 dark:text-slate-400 block">Sisa Waktu:</span>
+                    <strong id="m3-sisa-jam-operasional" class="text-slate-800 dark:text-slate-200">-- Jam</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-slate-50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-700 rounded transition-colors">
+                <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase mb-2">Kebutuhan Truk:</div>
+                <div class="flex items-baseline gap-2">
+                  <span id="m3-truck-per-jam" class="text-3xl font-bold text-slate-900 dark:text-slate-100">--</span>
+                  <span class="text-sm text-slate-500 dark:text-slate-400">Truk/Jam</span>
+                </div>
+                <div class="grid grid-cols-2 gap-4 border-t border-slate-200 dark:border-slate-700 mt-4 pt-3 font-mono">
+                  <div>
+                    <span class="text-[10px] text-slate-500 dark:text-slate-400 block">Target Kapasitas (TCH):</span>
+                    <strong id="m3-target-tch" class="text-slate-800 dark:text-slate-200">-- Ton/h</strong>
+                  </div>
+                  <div>
+                    <span class="text-[10px] text-slate-500 dark:text-slate-400 block">Laju Imbibisi:</span>
+                    <strong id="m3-imbibisi-flow" class="text-slate-800 dark:text-slate-200">-- m&sup3;/h</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-5 shadow-sm transition-colors">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status Ketahanan Stok</h3>
+              <span id="m3-ketahanan-badge" class="text-xs font-mono px-2 py-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-300">--</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono">
+              <div class="bg-slate-50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-700 rounded transition-colors">
+                <span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase block mb-1">Ketahanan Waktu Giling</span>
+                <div class="flex items-baseline gap-1.5">
+                  <span id="m3-ketahanan-jam" class="text-3xl font-bold text-slate-900 dark:text-slate-100">--</span>
+                  <span class="text-sm text-slate-500 dark:text-slate-400 ml-1">Jam Operasi</span>
+                </div>
+              </div>
+              <div class="bg-slate-50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-700 rounded transition-colors">
+                <span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase block mb-1">Status Defisit Harian</span>
+                <div class="flex items-baseline gap-1.5">
+                  <span id="m3-defisit-truck" class="text-3xl font-bold text-slate-900 dark:text-slate-100">--</span>
+                  <span class="text-sm text-slate-500 dark:text-slate-400 ml-1">Truk</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </div>
+  </main>
+
+  <!-- ================================================================= -->
+  <!-- 3. FOOTER -->
+  <!-- ================================================================= -->
+  <footer class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-4 py-3 text-[11px] font-mono text-slate-500 dark:text-slate-400 transition-colors">
+    <div class="max-w-[1600px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div>&copy; 2026 PT Rejoso Manis Indo</div>
+      <div>Milling Train Operation &amp; Capacity Control System</div>
+    </div>
+  </footer>
+
+  <!-- ================================================================= -->
+  <!-- MODAL: SINKRONISASI ONLINE STOK TEBU -->
+  <!-- ================================================================= -->
+  <div id="modal-rmi-sync" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-900/80 backdrop-blur-sm hidden">
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg max-w-lg w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900 transition-colors">
+        <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">Integrasi Data Stok Tebu</h3>
+        <button type="button" onclick="closeRmiSyncModal()" class="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <div class="p-5 space-y-5 overflow-y-auto font-mono text-xs">
+        
+        <div class="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded transition-colors">
+          <div class="flex justify-between items-center mb-4">
+            <span class="text-slate-600 dark:text-slate-300 font-bold uppercase">Status Koneksi Portal</span>
+            <span id="modal-status-badge" class="px-2 py-1 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 rounded font-bold">ONLINE</span>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded text-center transition-colors">
+              <span class="block text-[10px] text-slate-500 dark:text-slate-400 mb-1 uppercase">Truk di Cane Yard</span>
+              <span id="modal-live-cy-truck" class="text-3xl font-bold text-slate-900 dark:text-slate-100 block font-mono">---</span>
+            </div>
+            <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded text-center transition-colors">
+              <span class="block text-[10px] text-slate-500 dark:text-slate-400 mb-1 uppercase">Truk di Semua Area</span>
+              <span id="modal-live-total-all" class="text-3xl font-bold text-slate-900 dark:text-slate-100 block font-mono">---</span>
+            </div>
+          </div>
+          <div class="mt-4 grid grid-cols-2 gap-2">
+            <button type="button" id="btn-select-cy" onclick="applyCaneYardStock()" class="py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded transition-colors shadow">Pilih Data Cane Yard</button>
+            <button type="button" id="btn-select-all" onclick="applyTotalAllStock()" class="py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-bold rounded border border-slate-300 dark:border-slate-600 transition-colors">Pilih Semua Area</button>
+          </div>
+        </div>
+
+        <div class="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded transition-colors">
+          <div class="flex justify-between items-center mb-4">
+            <span class="text-slate-600 dark:text-slate-300 font-bold uppercase">Pengaturan Sinkronisasi</span>
+            <button type="button" onclick="fetchLiveRmiStock(true)" class="text-blue-600 dark:text-blue-400 hover:underline font-bold">Sinkronkan Sekarang</button>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[10px] text-slate-500 dark:text-slate-400 mb-1">Interval Sinkronisasi:</label>
+              <select id="modal-auto-sync-interval" onchange="handleAutoSyncIntervalChange(this.value)" class="w-full px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 rounded outline-none font-bold">
+                <option value="3600" selected>Setiap 1 Jam</option>
+                <option value="1800">Setiap 30 Menit</option>
+                <option value="900">Setiap 15 Menit</option>
+                <option value="0">Manual</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] text-slate-500 dark:text-slate-400 mb-1">Status Auto-Sync:</label>
+              <div id="auto-sync-status-text" class="px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-400 rounded font-bold">Mode Manual</div>
+            </div>
+          </div>
+          
+          <details class="mt-4 border-t border-slate-200 dark:border-slate-700 pt-3">
+            <summary class="text-[10px] text-slate-500 dark:text-slate-400 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">Konfigurasi Akses Portal</summary>
+            <div class="mt-3 grid grid-cols-2 gap-3">
+              <input type="text" id="cfg-rmi-uname" placeholder="Username" class="w-full px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 rounded outline-none font-mono" />
+              <input type="password" id="cfg-rmi-passwd" placeholder="Password" class="w-full px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 rounded outline-none font-mono" />
+            </div>
+          </details>
+
+          <div id="modal-rmi-feedback" class="mt-3 p-2 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 rounded font-bold hidden"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // -----------------------------------------------------------
+    // DEFENSIVE DOM UTILITIES
+    // -----------------------------------------------------------
+    const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    const toggleVis = (id, show) => { const el = document.getElementById(id); if (el) el.classList.toggle('hidden', !show); };
+
+    // -----------------------------------------------------------
+    // THEME ENGINE
+    // -----------------------------------------------------------
+    function toggleThemeMode() {
+      const isDark = document.documentElement.classList.contains('dark');
+      if (isDark) {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('scada_theme', 'light');
+        toggleVis('icon-theme-sun', false);
+        toggleVis('icon-theme-moon', true);
+      } else {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('scada_theme', 'dark');
+        toggleVis('icon-theme-sun', true);
+        toggleVis('icon-theme-moon', false);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      toggleVis('icon-theme-sun', isDark);
+      toggleVis('icon-theme-moon', !isDark);
+    });
+
+    // -----------------------------------------------------------
+    // CORE ENGINE (CALCULATION LOGIC)
+    // -----------------------------------------------------------
+    let currentMode = 1;
+    let isLiveClockActive = true;
+    let latestRmiData = null;
+    let rmiSyncTimer = null;
+    let currentSpeedDivisor = 10.0;
+    let activeStockSource = 'manual';
+
+    const TON_PER_TRUCK = 8.9;
+    const IMBIBISI_FACTOR = 1.85;
+
+    const inputSpeed = document.getElementById('input-speed');
+    const inputStok = document.getElementById('input-stok');
+    const inputJamSekarang = document.getElementById('input-jam-sekarang');
+    const inputTargetJam = document.getElementById('input-target-jam');
+    const inputTargetTcd = document.getElementById('input-target-tcd');
+
+    function updateScadaDate() {
+      const now = new Date();
+      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      
+      const formattedDate = `${days[now.getDay()]}, ${padZero(now.getDate())} ${months[now.getMonth()]} ${now.getFullYear()}`;
+      setText('scada-date', formattedDate);
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+
+    function padZero(n) { return n < 10 ? '0' + n : '' + n; }
+    
+    function parseNumberInput(val) {
+      if (!val) return 0;
+      const num = parseFloat(val.toString().replace(/[^0-9.,]/g, '').replace(',', '.'));
+      return (isNaN(num)) ? 0 : num;
+    }
+    
+    function formatDec1(num) { return (Math.round(num * 10) / 10).toFixed(1); }
+    function formatThousand(num) { return Math.round(Number(num)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+    
+    function parseTimeToMinutes(timeStr) {
+      if (!timeStr) return 0;
+      const parts = timeStr.split(':');
+      return (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
+    }
+    
+    function formatMinutesToTime(totalMinutes) {
+      const positive = ((totalMinutes % 1440) + 1440) % 1440;
+      return `${padZero(Math.floor(positive / 60))}:${padZero(Math.floor(positive % 60))}`;
+    }
+
+    function switchMode(mode) {
+      currentMode = mode;
+      
+      const activeClass = "flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-md transition-all duration-150 bg-blue-600 text-white shadow-sm";
+      const inactiveClass = "flex-1 sm:flex-initial px-4 py-1.5 text-xs font-semibold rounded-md transition-all duration-150 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100";
+      
+      const setTab = (id, isActive) => {
+         const el = document.getElementById(id);
+         if(el) el.className = isActive ? activeClass : inactiveClass;
+      };
+
+      setTab('tab-mode-1', mode === 1);
+      setTab('tab-mode-2', mode === 2);
+      setTab('tab-mode-3', mode === 3);
+
+      toggleVis('group-speed-input', mode === 1);
+      toggleVis('group-target-jam', mode === 2);
+      toggleVis('group-target-tcd', mode === 3);
+      toggleVis('group-jam-sekarang', mode !== 3);
+
+      toggleVis('mode-1-metrics', mode === 1);
+      toggleVis('mode-2-metrics', mode === 2);
+      toggleVis('mode-3-metrics', mode === 3);
+
+      recalculate();
+    }
+
+    // =========================================================
+    // [FINAL ENGINE] TRUCK SUMMARY MENGGUNAKAN WAKTU SERVER RMI (MIRRORING LOGIC)
+    // =========================================================
+    function updateTruckSummary() {
+      const banner = document.getElementById('truck-summary-banner');
+      const textEl = document.getElementById('truck-summary-text');
+      
+      if (!banner || !textEl) return;
+
+      // 1. Pastikan data RMI tersedia
+      if (!latestRmiData || !latestRmiData.rmiServerTime) {
+        banner.classList.add('hidden');
+        return;
+      }
+
+      // ---------------------------------------------------------
+      // ROOT CAUSE FIX: MENGUNGKAP LOGIKA ORIGINAL PORTAL RMI
+      // Portal RMI membagi jumlah truk dengan kapasitas fix: 45 Truk/Jam.
+      // Contoh: 180 Truk / 45 = 4 Jam.
+      // ---------------------------------------------------------
+      const cyTruck = latestRmiData.caneYardTruck || 0;
+      const durasiJam = cyTruck / 45.0; 
+
+      if (durasiJam <= 0 || !isFinite(durasiJam)) {
+        banner.classList.add('hidden');
+        return;
+      }
+
+      // 2. Bekukan (freeze) baseline waktu menggunakan data yang ditarik dari server
+      let baselineTimeMs = 0;
+
+      if (latestRmiData && latestRmiData.fetchedAt) {
+        // Menggunakan waktu absolut saat data berhasil diambil oleh backend
+        baselineTimeMs = new Date(latestRmiData.fetchedAt).getTime();
+      } else {
+        // Fallback jika fetchedAt tidak tersedia
+        const now = new Date(); 
+        baselineTimeMs = now.getTime();
+      }
+
+      // ---------------------------------------------------------
+      // ROOT CAUSE FIX: MIRRORING LOGIKA APLIKASI ORIGINAL RMI
+      // ---------------------------------------------------------
+      // 1. Portal RMI membulatkan jam selalu ke atas (Ceiling)
+      const hoursRounded = Math.ceil(durasiJam); 
+
+      // 2. Kalkulasi tanggal selesai menambahkan angka bulat jam, bukan desimal
+      const finishDate = new Date(baselineTimeMs + (hoursRounded * 60 * 60 * 1000));
+
+      const dd = padZero(finishDate.getDate());
+      const mm = padZero(finishDate.getMonth() + 1);
+      const yyyy = finishDate.getFullYear();
+      const hh = padZero(finishDate.getHours());
+      const min = padZero(finishDate.getMinutes());
+      const ss = padZero(finishDate.getSeconds());
+
+      const formattedEnd = `${dd} ${mm} ${yyyy} ${hh}:${min}:${ss}`; 
+
+      textEl.textContent = `TRUCK SUMMARY (${hoursRounded} HOUR(S) TO CRUSH SUGARCANE IN CANE YARD TILL ${formattedEnd})`;
+      banner.classList.remove('hidden');
+    }
+
+    function clearAllInputs() {
+      if(inputSpeed) inputSpeed.value = "";
+      if(inputTargetJam) inputTargetJam.value = "";
+      if(inputTargetTcd) inputTargetTcd.value = "";
+      
+      syncCurrentTime(true);
+      setText('target-durasi-preview', "---");
+      recalculate();
+    }
+
+    function updateStockButtons() {
+      const btnCy = document.getElementById('btn-select-cy');
+      const btnAll = document.getElementById('btn-select-all');
+      
+      const activeCls = "py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded transition-colors shadow";
+      const inactiveCls = "py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-bold rounded border border-slate-300 dark:border-slate-600 transition-colors";
+      
+      if(btnCy) btnCy.className = (activeStockSource === 'cy') ? activeCls : inactiveCls;
+      if(btnAll) btnAll.className = (activeStockSource === 'all') ? activeCls : inactiveCls;
+    }
+
+    function recalculate() {
+      const stokTruck = parseNumberInput(inputStok ? inputStok.value : 0);
+      
+      if (stokTruck > 0) {
+        setText('stok-ton-preview', `${formatThousand(stokTruck * TON_PER_TRUCK)} Ton`);
+      } else {
+        setText('stok-ton-preview', "--- Ton");
+      }
+
+      const jamSekarangMinutes = parseTimeToMinutes(inputJamSekarang ? inputJamSekarang.value : "00:00");
+
+      if (currentMode === 1) {
+        const speedRPM = parseNumberInput(inputSpeed ? inputSpeed.value : 0);
+        if (speedRPM > 0) {
+          const kapTruck = speedRPM / currentSpeedDivisor;
+          const kapTon = kapTruck * TON_PER_TRUCK;
+          const imbM3 = kapTruck * IMBIBISI_FACTOR;
+          
+          setText('m1-kapasitas-ton', formatDec1(kapTon));
+          setText('m1-saran-imbibisi', formatDec1(imbM3));
+          setText('m1-imbibisi-lpm', `${formatDec1((imbM3 * 1000)/60)} L/min`);
+
+          if (stokTruck > 0) {
+            const durasiJam = stokTruck / kapTruck;
+            const selesaiMenit = jamSekarangMinutes + (durasiJam * 60);
+            setText('m1-estimasi-habis', formatMinutesToTime(selesaiMenit));
+            setText('m1-durasi-jam', `${formatDec1(durasiJam)} Jam`);
+            updateTruckSummary(durasiJam);
+          } else {
+            setText('m1-estimasi-habis', "--:--");
+            setText('m1-durasi-jam', "-- Jam");
+            updateTruckSummary(0);
+          }
+        } else {
+          setText('m1-kapasitas-ton', "0.0");
+          setText('m1-saran-imbibisi', "0.0");
+          setText('m1-estimasi-habis', "--:--");
+          setText('m1-durasi-jam', "-- Jam");
+          updateTruckSummary(0);
+        }
+      } 
+      else if (currentMode === 2) {
+        const targetJamStr = inputTargetJam ? inputTargetJam.value : "";
+        if (targetJamStr && stokTruck > 0) {
+          const targetMin = parseTimeToMinutes(targetJamStr);
+          let diffMin = targetMin - jamSekarangMinutes;
+          if (diffMin <= 0) diffMin += 1440;
+          const durasiJam = diffMin / 60;
+          
+          setText('target-durasi-preview', `${formatDec1(durasiJam)} Jam`);
+
+          if (durasiJam > 0) {
+            const reqTruck = stokTruck / durasiJam;
+            setText('m2-rekomendasi-speed', Math.round(reqTruck * currentSpeedDivisor));
+            setText('m2-target-kapasitas-ton', formatDec1(reqTruck * TON_PER_TRUCK));
+            setText('m2-saran-imbibisi', formatDec1(reqTruck * IMBIBISI_FACTOR));
+            updateTruckSummary(durasiJam);
+          } else {
+            updateTruckSummary(0);
+          }
+        } else {
+          setText('m2-rekomendasi-speed', "--");
+          setText('target-durasi-preview', "---");
+          updateTruckSummary(0);
+        }
+      }
+      else if (currentMode === 3) {
+        const targetTcd = parseNumberInput(inputTargetTcd ? inputTargetTcd.value : 0);
+        const hasTarget = targetTcd > 0;
+        const crushed = (latestRmiData && latestRmiData.todayCrushed) ? latestRmiData.todayCrushed : 0;
+        const sisaJamStr = (latestRmiData && latestRmiData.remainingHour) ? latestRmiData.remainingHour : "00:00";
+        let sisaJamDec = parseTimeToMinutes(sisaJamStr) / 60.0;
+        if(sisaJamDec <= 0) sisaJamDec = 2.0;
+
+        setText('target-giling-crushed-ton', formatThousand(crushed));
+        setText('target-giling-rem-hour', sisaJamStr);
+
+        if (hasTarget) {
+          toggleVis('m3-prompt-no-target', false);
+          setText('m3-badge-target-tcd', formatThousand(targetTcd));
+          
+          const sisaTon = Math.max(0, targetTcd - crushed);
+          const reqTonH = sisaTon / sisaJamDec;
+          const reqTruckH = reqTonH / TON_PER_TRUCK;
+          
+          setText('m3-rekomendasi-speed', Math.round(reqTruckH * currentSpeedDivisor));
+          setText('m3-truck-per-jam', formatDec1(reqTruckH));
+          setText('m3-target-tch', formatDec1(reqTonH));
+          setText('m3-imbibisi-flow', formatDec1(reqTruckH * IMBIBISI_FACTOR));
+          
+          setText('target-giling-sisa-ton', formatThousand(sisaTon));
+          setText('m3-sisa-target-ton', `${formatThousand(sisaTon)} Ton`);
+          setText('m3-sisa-jam-operasional', `${formatDec1(sisaJamDec)} Jam`);
+          
+          const cyTruck = stokTruck > 0 ? stokTruck : ((latestRmiData && latestRmiData.caneYardTruck) ? latestRmiData.caneYardTruck : 0);
+          
+          if(reqTonH > 0) {
+            const durasiCyJam = (cyTruck * TON_PER_TRUCK) / reqTonH;
+            setText('m3-ketahanan-jam', formatDec1(durasiCyJam));
+            const defisit = Math.max(0, Math.round(sisaTon / TON_PER_TRUCK) - cyTruck);
+            setText('m3-defisit-truck', formatThousand(defisit));
+            
+            const badge = document.getElementById('m3-ketahanan-badge');
+            if(badge) {
+              badge.textContent = defisit > 0 ? "PASOKAN TERBATAS" : "STOK AMAN";
+              badge.className = defisit > 0 
+                ? "px-2 py-1 text-[10.5px] font-mono font-bold rounded bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-600 dark:text-amber-500" 
+                : "px-2 py-1 text-[10.5px] font-mono font-bold rounded bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-500";
+            }
+            updateTruckSummary(durasiCyJam);
+          } else {
+            updateTruckSummary(0);
+          }
+        } else {
+          toggleVis('m3-prompt-no-target', true);
+          setText('m3-badge-target-tcd', "Menunggu Input");
+          setText('m3-rekomendasi-speed', "--");
+          setText('m3-truck-per-jam', "--");
+          setText('m3-target-tch', "-- Ton/h");
+          setText('m3-imbibisi-flow', "-- m³/h");
+          setText('target-giling-sisa-ton', "---");
+          setText('m3-sisa-target-ton', "-- Ton");
+          setText('m3-sisa-jam-operasional', "-- Jam");
+          setText('m3-ketahanan-jam', "--");
+          setText('m3-defisit-truck', "--");
+          setText('m3-ketahanan-badge', "--");
+          updateTruckSummary(0);
+        }
+      }
+    }
+
+    // -----------------------------------------------------------
+    // SHIFT VISUAL LOGIC (REAL-TIME ENGINE)
+    // -----------------------------------------------------------
+    function updateShiftVisuals() {
+      const nowHour = new Date().getHours();
+      let activeShift = 3;
+      if (nowHour >= 0 && nowHour < 8) activeShift = 1;
+      else if (nowHour >= 8 && nowHour < 16) activeShift = 2;
+
+      const boxes = [
+        { id: 'm3-box-shift1', titleId: 'm3-title-shift1', shiftNum: 1, label: 'SHIFT 1 (00-08)' },
+        { id: 'm3-box-shift2', titleId: 'm3-title-shift2', shiftNum: 2, label: 'SHIFT 2 (08-16)' },
+        { id: 'm3-box-shift3', titleId: 'm3-title-shift3', shiftNum: 3, label: 'SHIFT 3 (16-24)' }
+      ];
+
+      boxes.forEach(box => {
+        const elBox = document.getElementById(box.id);
+        const elTitle = document.getElementById(box.titleId);
+        if(!elBox || !elTitle) return;
+
+        if (box.shiftNum < activeShift) {
+          elBox.className = "bg-emerald-50 dark:bg-emerald-900/10 p-2 rounded border border-emerald-400 dark:border-emerald-600 transition-colors duration-300";
+          elTitle.className = "text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block mb-1 transition-colors";
+          elTitle.textContent = box.label;
+        } else if (box.shiftNum === activeShift) {
+          elBox.className = "bg-amber-50 dark:bg-amber-900/10 p-2 rounded border border-amber-400 dark:border-amber-500 shadow-sm shadow-amber-900/20 transition-colors duration-300";
+          elTitle.className = "text-[10px] text-amber-600 dark:text-amber-400 font-bold block mb-1 transition-colors";
+          elTitle.textContent = box.label;
+        } else {
+          elBox.className = "bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700 transition-colors duration-300";
+          elTitle.className = "text-[10px] text-slate-500 dark:text-slate-400 block mb-1 transition-colors";
+          elTitle.textContent = box.label;
+        }
+      });
+    }
+
+    // -----------------------------------------------------------
+    // DATA FETCHING & SYNCHRONIZATION
+    // -----------------------------------------------------------
+    async function handleSyncClick(btn) {
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="inline-block animate-spin mr-1">↻</span> Syncing...`;
+      try {
+        await fetchLiveRmiStock(true, false);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+
+    function openRmiSyncModal() {
+      toggleVis('modal-rmi-sync', true);
+      const savedUname = localStorage.getItem('rmi_cfg_uname') || '';
+      const savedPasswd = localStorage.getItem('rmi_cfg_passwd') || '';
+      const savedInterval = localStorage.getItem('rmi_auto_interval') || '3600';
+      
+      const elUname = document.getElementById('cfg-rmi-uname');
+      const elPasswd = document.getElementById('cfg-rmi-passwd');
+      const elInterval = document.getElementById('modal-auto-sync-interval');
+      
+      if(elUname) elUname.value = savedUname;
+      if(elPasswd) elPasswd.value = savedPasswd;
+      if(elInterval) elInterval.value = savedInterval;
+      
+      updateAutoSyncStatusBadge(savedInterval);
+      updateStockButtons();
+    }
+    
+    function closeRmiSyncModal() {
+      toggleVis('modal-rmi-sync', false);
+      toggleVis('modal-rmi-feedback', false);
+    }
+
+    async function fetchLiveRmiStock(force=false, apply=false) {
+      const elUname = document.getElementById('cfg-rmi-uname');
+      const elPasswd = document.getElementById('cfg-rmi-passwd');
+      const uname = elUname ? elUname.value : (localStorage.getItem('rmi_cfg_uname') || '');
+      const passwd = elPasswd ? elPasswd.value : (localStorage.getItem('rmi_cfg_passwd') || '');
+      
+      localStorage.setItem('rmi_cfg_uname', uname);
+      localStorage.setItem('rmi_cfg_passwd', passwd);
+
+      try {
+        const res = await fetch(`/api/rmi/live-stock?force=${force}`);
+        const json = await res.json();
+        if(json.success && json.data) {
+          latestRmiData = json.data;
+          
+          setText('m3-grid-cy-truck', formatThousand(latestRmiData.caneYardTruck));
+          setText('m3-grid-cy-ton', formatThousand(latestRmiData.caneYardTonage));
+          setText('m3-header-cy-truck', formatThousand(latestRmiData.caneYardTruck));
+          setText('m3-header-cy-ton', formatThousand(latestRmiData.caneYardTonage));
+          setText('strip-rmi-time', latestRmiData.rmiServerTime);
+
+          setText('m3-rmi-target', formatThousand(latestRmiData.todayTarget));
+          setText('m3-rmi-crushed', formatThousand(latestRmiData.todayCrushed));
+          setText('m3-rmi-crushed-truck', formatThousand(latestRmiData.totalCrushedTruck || Math.round(latestRmiData.todayCrushed/TON_PER_TRUCK)));
+          setText('m3-rmi-remaining', formatThousand(latestRmiData.remainingTarget));
+          setText('m3-rmi-remaining-truck', formatThousand(Math.round(latestRmiData.remainingTarget/TON_PER_TRUCK)));
+          setText('m3-rmi-rem-hour', latestRmiData.remainingHour);
+          setText('m3-rmi-hourly-target', formatDec1(latestRmiData.hourlyTarget));
+          setText('m3-rmi-hourly-truck', formatDec1(latestRmiData.hourlyTarget/TON_PER_TRUCK));
+          
+          let pct = latestRmiData.todayTarget > 0 ? (latestRmiData.todayCrushed / latestRmiData.todayTarget) * 100 : 0;
+          setText('m3-progress-pct', `${formatDec1(pct)}%`);
+          
+          const progBar = document.getElementById('m3-progress-bar');
+          if(progBar) progBar.style.width = `${formatDec1(pct)}%`;
+
+          const s1Trk = latestRmiData.shift1Truck || 0;
+          const s1Ton = (latestRmiData.shift1Ton || latestRmiData.shift1Tonage) || (s1Trk * TON_PER_TRUCK);
+          const s2Trk = latestRmiData.shift2Truck || 0;
+          const s2Ton = (latestRmiData.shift2Ton || latestRmiData.shift2Tonage) || (s2Trk * TON_PER_TRUCK);
+          const s3Trk = latestRmiData.shift3Truck || 0;
+          const s3Ton = (latestRmiData.shift3Ton || latestRmiData.shift3Tonage) || (s3Trk * TON_PER_TRUCK);
+
+          setText('m3-shift1-ton', `${formatThousand(s1Ton)} Ton`);
+          setText('m3-shift1-truck', formatThousand(s1Trk));
+          setText('m3-shift2-ton', `${formatThousand(s2Ton)} Ton`);
+          setText('m3-shift2-truck', formatThousand(s2Trk));
+          setText('m3-shift3-ton', `${formatThousand(s3Ton)} Ton`);
+          setText('m3-shift3-truck', formatThousand(s3Trk));
+
+          const totalTrk = latestRmiData.totalCrushedTruck || (s1Trk + s2Trk + s3Trk);
+          setText('m3-total-crushed-truck', formatThousand(totalTrk));
+
+          setText('modal-live-cy-truck', formatThousand(latestRmiData.caneYardTruck));
+          setText('modal-live-cy-tonage', formatThousand(latestRmiData.caneYardTonage));
+          setText('modal-live-total-all', formatThousand(latestRmiData.totalAllTruck));
+          
+          if (force) {
+            setText('modal-rmi-feedback', `Sinkronisasi Berhasil: Data Cane Yard (${latestRmiData.caneYardTruck} Truk) telah diperbarui.`);
+            toggleVis('modal-rmi-feedback', true);
+          }
+          if(apply || (inputStok && !inputStok.value)) applyCaneYardStock();
+          recalculate();
+        }
+      } catch (err) { console.error("RMI Fetch Error:", err); }
+    }
+
+    function applyCaneYardStock() {
+      if(latestRmiData && inputStok) {
+        inputStok.value = latestRmiData.caneYardTruck;
+        activeStockSource = 'cy';
+        updateStockButtons();
+        setText('rmi-sync-status-indicator', `Sumber: RMI Portal`);
+        recalculate();
+        closeRmiSyncModal();
+      }
+    }
+
+    function applyTotalAllStock() {
+      if(latestRmiData && inputStok) {
+        inputStok.value = latestRmiData.totalAllTruck;
+        activeStockSource = 'all';
+        updateStockButtons();
+        setText('rmi-sync-status-indicator', `Sumber: RMI Total Area`);
+        recalculate();
+        closeRmiSyncModal();
+      }
+    }
+
+    function handleAutoSyncIntervalChange(val) {
+      localStorage.setItem('rmi_auto_interval', val);
+      updateAutoSyncStatusBadge(val);
+      setupRmiAutoSyncInterval(val);
+    }
+    
+    function updateAutoSyncStatusBadge(val) {
+      setText('auto-sync-status-text', val > 0 ? `Aktif (${val} detik)` : "Mode Manual");
+      setText('strip-auto-sync-label', val > 0 ? `Auto: Aktif` : "Auto: Manual");
+    }
+
+    function setupRmiAutoSyncInterval(seconds) {
+      if (rmiSyncTimer) {
+        clearInterval(rmiSyncTimer);
+        rmiSyncTimer = null;
+      }
+      if (seconds > 0) {
+        rmiSyncTimer = setInterval(() => {
+          fetchLiveRmiStock(true, true);
+        }, seconds * 1000);
+      }
+    }
+
+    function toggleLiveClockSync() {
+      isLiveClockActive = !isLiveClockActive;
+      const statusEl = document.getElementById('live-clock-status');
+      const ledEl = document.getElementById('live-clock-led');
+      if (isLiveClockActive) {
+        if(statusEl) statusEl.textContent = "REAL-TIME AKTIF";
+        if(ledEl) ledEl.className = "w-1.5 h-1.5 rounded-full bg-[#10B981] led-pulse-green";
+        syncCurrentTime(true);
+      } else {
+        if(statusEl) statusEl.textContent = "MANUAL (TERKUNCI)";
+        if(ledEl) ledEl.className = "w-1.5 h-1.5 rounded-full bg-slate-400";
+      }
+    }
+
+    function syncCurrentTime(forceResume = false) {
+      if (forceResume) isLiveClockActive = true;
+      const now = new Date();
+      if(inputJamSekarang) {
+        inputJamSekarang.value = `${padZero(now.getHours())}:${padZero(now.getMinutes())}:${padZero(now.getSeconds())}`;
+        recalculate();
+      }
+    }
+
+    // -----------------------------------------------------------
+    // EVENT LISTENERS & INIT
+    // -----------------------------------------------------------
+    
+    if(inputStok) {
+      inputStok.addEventListener('input', (e) => {
+        const cleanVal = e.target.value.replace(/[^0-9.,]/g, '');
+        if (cleanVal !== e.target.value) e.target.value = cleanVal;
+        activeStockSource = 'manual';
+        setText('rmi-sync-status-indicator', "Sumber: Manual");
+        recalculate();
+      });
+      inputStok.addEventListener('change', recalculate);
+    }
+
+    ['input-speed', 'input-jam-sekarang', 'input-target-jam', 'input-target-tcd'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) {
+        el.addEventListener('input', recalculate);
+        el.addEventListener('change', recalculate);
+      }
+    });
+
+    if(inputJamSekarang) {
+      inputJamSekarang.addEventListener('focus', () => {
+        if (isLiveClockActive) toggleLiveClockSync();
+      });
+    }
+
+    // Heartbeat Clock - Runs every 1 second
+    setInterval(() => {
+      const now = new Date();
+      setText('scada-clock', `${padZero(now.getHours())}:${padZero(now.getMinutes())}:${padZero(now.getSeconds())} WIB`);
+      
+      updateScadaDate();
+      
+      // ---> SISIPKAN TEPAT DI SINI <---
+      updateTruckSummary(); 
+      // -------------------------------
+
+      if(isLiveClockActive && inputJamSekarang) {
+        inputJamSekarang.value = `${padZero(now.getHours())}:${padZero(now.getMinutes())}:${padZero(now.getSeconds())}`;
+        recalculate();
+      }
+      
+      updateShiftVisuals();
+    }, 1000);
+
+    window.addEventListener('DOMContentLoaded', () => {
+      updateScadaDate();
+      syncCurrentTime();
+      updateShiftVisuals();
+      const savedAutoInterval = parseInt(localStorage.getItem('rmi_auto_interval') || '3600', 10);
+      setupRmiAutoSyncInterval(savedAutoInterval);
+      updateAutoSyncStatusBadge(savedAutoInterval);
+      fetchLiveRmiStock(false, true);
+      updateStockButtons();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "Milling Train Operation Calculator - PT Rejoso Manis Indo",
+  "description": "Kalkulator Operasional SCADA Milling Train Pabrik Gula PT Rejoso Manis Indo dengan sinkronisasi langsung portal RMI untuk estimasi jam selesai, rekomendasi speed gilingan, dan mode Target Giling adaptif harian.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
